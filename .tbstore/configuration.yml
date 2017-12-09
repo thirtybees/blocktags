@@ -1,0 +1,13 @@
+module_name: Block Tags
+compatible_versions: 1.0.0+
+author: thirty bees
+category: front office
+tags:
+  - tags
+  - seo
+  - tag
+description_short: The block tags adds a tag cloud to your site.
+description: description.md
+images:
+  - image-1.png
+license: AFL
