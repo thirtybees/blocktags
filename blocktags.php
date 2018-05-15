@@ -40,7 +40,7 @@ class BlockTags extends Module
 		$this->bootstrap = true;
 		parent::__construct();
 
-		$this->displayName = $this->l('Tags block');
+		$this->displayName = $this->l('Block Tags');
 		$this->description = $this->l('Adds a block containing your product tags.');
 		$this->ps_versions_compliancy = array('min' => '1.6', 'max' => '1.6.99.99');
 	}
