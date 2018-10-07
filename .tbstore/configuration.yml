@@ -6,6 +6,7 @@ tags:
   - tags
   - seo
   - tag
+  - blocktags
 description_short: The block tags adds a tag cloud to your site.
 description: description.md
 images:
