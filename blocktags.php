@@ -29,11 +29,15 @@ if (!defined('_TB_VERSION_')) {
 
 class BlockTags extends Module
 {
+    const CONFIG_MAX_TAGS_DISPLAYED = 'BLOCKTAGS_NBR';
+    const CONFIG_MAX_LEVEL = 'BLOCKTAGS_MAX_LEVEL';
+    const CONFIG_RANDOMIZE = 'BLOCKTAGS_RANDOMIZE';
+
     /**
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
-    function __construct()
+    public function __construct()
     {
         $this->name = 'blocktags';
         $this->tab = 'front_office_features';
@@ -56,7 +60,7 @@ class BlockTags extends Module
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
-    function install()
+    public function install()
     {
         $success = (parent::install()
             && $this->registerHook('header')
@@ -64,9 +68,6 @@ class BlockTags extends Module
             && $this->registerHook('addproduct')
             && $this->registerHook('updateproduct')
             && $this->registerHook('deleteproduct')
-            && Configuration::updateValue('BLOCKTAGS_NBR', 10)
-            && Configuration::updateValue('BLOCKTAGS_MAX_LEVEL', 3)
-            && Configuration::updateValue('BLOCKTAGS_RANDOMIZE', false)
         );
 
         $this->_clearCache('*');
@@ -95,6 +96,10 @@ class BlockTags extends Module
     public function uninstall()
     {
         $this->_clearCache('*');
+
+        Configuration::deleteByName(static::CONFIG_MAX_TAGS_DISPLAYED);
+        Configuration::deleteByName(static::CONFIG_MAX_LEVEL);
+        Configuration::deleteByName(static::CONFIG_RANDOMIZE);
 
         return parent::uninstall();
     }
@@ -143,38 +148,24 @@ class BlockTags extends Module
         $output = '';
         $errors = [];
         if (Tools::isSubmit('submitBlockTags')) {
-            $tagsNbr = Tools::getValue('BLOCKTAGS_NBR');
-            if (!strlen($tagsNbr)) {
-                $errors[] = $this->l('Please complete the "Displayed tags" field.');
-            }
-            elseif (!Validate::isInt($tagsNbr) || (int)($tagsNbr) <= 0) {
+            $tagsNbr = (int)Tools::getValue(static::CONFIG_MAX_TAGS_DISPLAYED);
+            if ($tagsNbr <= 0) {
                 $errors[] = $this->l('Invalid number.');
             }
 
-            $tagsLevels = Tools::getValue('BLOCKTAGS_MAX_LEVEL');
-            if (!strlen($tagsLevels)) {
-                $errors[] = $this->l('Please complete the "Tag levels" field.');
-            }
-            elseif (!Validate::isInt($tagsLevels) || (int)($tagsLevels) <= 0) {
+            $tagsLevels = (int)Tools::getValue(static::CONFIG_MAX_LEVEL);
+            if ($tagsLevels <= 0) {
                 $errors[] = $this->l('Invalid value for "Tag levels". Choose a positive integer number.');
             }
 
-            $randomize = Tools::getValue('BLOCKTAGS_RANDOMIZE');
-            if (!strlen($randomize)) {
-                $errors[] = $this->l('Please complete the "Randomize" field.');
-            }
-            elseif (!Validate::isBool($randomize)) {
-                $errors[] = $this->l('Invalid value for "Randomize". It has to be a boolean.');
-            }
+            $randomize = (int)Tools::getValue(static::CONFIG_RANDOMIZE);
 
             if (count($errors)) {
                 $output = $this->displayError(implode('<br />', $errors));
-            }
-            else {
-                Configuration::updateValue('BLOCKTAGS_NBR', (int)$tagsNbr);
-                Configuration::updateValue('BLOCKTAGS_MAX_LEVEL', (int)$tagsLevels);
-                Configuration::updateValue('BLOCKTAGS_RANDOMIZE', (bool)$randomize);
-
+            } else {
+                Configuration::updateValue(static::CONFIG_MAX_TAGS_DISPLAYED, $tagsNbr);
+                Configuration::updateValue(static::CONFIG_MAX_LEVEL, $tagsLevels);
+                Configuration::updateValue(static::CONFIG_RANDOMIZE, $randomize);
                 $output = $this->displayConfirmation($this->l('Settings updated'));
             }
         }
@@ -200,21 +191,21 @@ class BlockTags extends Module
                     [
                         'type' => 'text',
                         'label' => $this->l('Displayed tags'),
-                        'name' => 'BLOCKTAGS_NBR',
+                        'name' => static::CONFIG_MAX_TAGS_DISPLAYED,
                         'class' => 'fixed-width-xs',
                         'desc' => $this->l('Set the number of tags you would like to see displayed in this block. (default: 10)')
                     ],
                     [
                         'type' => 'text',
                         'label' => $this->l('Tag levels'),
-                        'name' => 'BLOCKTAGS_MAX_LEVEL',
+                        'name' => static::CONFIG_MAX_LEVEL,
                         'class' => 'fixed-width-xs',
                         'desc' => $this->l('Set the number of different tag levels you would like to use. (default: 3)')
                     ],
                     [
                         'type' => 'switch',
                         'label' => $this->l('Random display'),
-                        'name' => 'BLOCKTAGS_RANDOMIZE',
+                        'name' => static::CONFIG_RANDOMIZE,
                         'class' => 'fixed-width-xs',
                         'desc' => $this->l('If enabled, displays tags randomly. By default, random display is disabled and the most used tags are displayed first.'),
                         'values' => [
@@ -266,9 +257,9 @@ class BlockTags extends Module
     public function getConfigFieldsValues()
     {
         return [
-            'BLOCKTAGS_NBR' => Tools::getValue('BLOCKTAGS_NBR', (int)Configuration::get('BLOCKTAGS_NBR')),
-            'BLOCKTAGS_MAX_LEVEL' => Tools::getValue('BLOCKTAGS_MAX_LEVEL', (int)Configuration::get('BLOCKTAGS_MAX_LEVEL')),
-            'BLOCKTAGS_RANDOMIZE' => Tools::getValue('BLOCKTAGS_RANDOMIZE', (bool)Configuration::get('BLOCKTAGS_RANDOMIZE')),
+            static::CONFIG_MAX_TAGS_DISPLAYED => Tools::getValue(static::CONFIG_MAX_TAGS_DISPLAYED, $this->getMaxTagsDisplayed()),
+            static::CONFIG_MAX_LEVEL => Tools::getValue(static::CONFIG_MAX_LEVEL, $this->getMaxLevel()),
+            static::CONFIG_RANDOMIZE => Tools::getValue(static::CONFIG_RANDOMIZE, (int)$this->shouldRandomize()),
         ];
     }
 
@@ -281,7 +272,7 @@ class BlockTags extends Module
      * @throws PrestaShopException
      * @throws SmartyException
      */
-    function hookRightColumn($params)
+    public function hookRightColumn($params)
     {
         return $this->hookLeftColumn($params);
     }
@@ -297,10 +288,12 @@ class BlockTags extends Module
      * @throws PrestaShopException
      * @throws SmartyException
      */
-    function hookLeftColumn($params)
+    public function hookLeftColumn($params)
     {
         if (!$this->isCached('blocktags.tpl', $this->getCacheId('blocktags'))) {
-            $tags = Tag::getMainTags((int)($params['cookie']->id_lang), (int)(Configuration::get('BLOCKTAGS_NBR')));
+            $languageId = (int)Context::getContext()->language->id;
+
+            $tags = Tag::getMainTags($languageId, $this->getMaxTagsDisplayed());
 
             $max = -1;
             $min = -1;
@@ -316,13 +309,13 @@ class BlockTags extends Module
             if ($min == $max) {
                 $coef = $max;
             } else {
-                $coef = (Configuration::get('BLOCKTAGS_MAX_LEVEL') - 1) / ($max - $min);
+                $coef = ($this->getMaxLevel() - 1) / ($max - $min);
             }
 
             if (!count($tags)) {
                 return false;
             }
-            if (Configuration::get('BLOCKTAGS_RANDOMIZE')) {
+            if ($this->shouldRandomize()) {
                 shuffle($tags);
             }
             foreach ($tags as &$tag) {
@@ -338,9 +331,40 @@ class BlockTags extends Module
      *
      * @return void
      */
-    function hookHeader($params)
+    public function hookHeader($params)
     {
         $this->context->controller->addCSS(($this->_path) . 'blocktags.css', 'all');
     }
 
+    /**
+     * @return int
+     *
+     * @throws PrestaShopException
+     */
+    protected function getMaxTagsDisplayed()
+    {
+        $value = (int)Configuration::get(static::CONFIG_MAX_TAGS_DISPLAYED);
+        return ($value > 0) ? $value : 10;
+    }
+
+    /**
+     * @return int
+     *
+     * @throws PrestaShopException
+     */
+    protected function getMaxLevel()
+    {
+        $value = (int)Configuration::get(static::CONFIG_MAX_LEVEL);
+        return ($value > 0) ? $value : 3;
+    }
+
+    /**
+     * @return bool
+     *
+     * @throws PrestaShopException
+     */
+    protected function shouldRandomize()
+    {
+        return (bool)Configuration::get(static::CONFIG_RANDOMIZE);
+    }
 }
