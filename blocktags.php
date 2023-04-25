@@ -293,16 +293,18 @@ class BlockTags extends Module
         if (!$this->isCached('blocktags.tpl', $this->getCacheId('blocktags'))) {
             $languageId = (int)Context::getContext()->language->id;
 
-            $tags = Tag::getMainTags($languageId, $this->getMaxTagsDisplayed());
-
+            $tags = [];
             $max = -1;
             $min = -1;
-            foreach ($tags as $tag) {
-                if ($tag['times'] > $max) {
-                    $max = $tag['times'];
-                }
-                if ($tag['times'] < $min || $min == -1) {
-                    $min = $tag['times'];
+            foreach (Tag::getMainTags($languageId, $this->getMaxTagsDisplayed()) as $tag) {
+                if ($tag['name']) {
+                    $tags[] = $tag;
+                    if ($tag['times'] > $max) {
+                        $max = $tag['times'];
+                    }
+                    if ($tag['times'] < $min || $min == -1) {
+                        $min = $tag['times'];
+                    }
                 }
             }
 
