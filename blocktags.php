@@ -23,236 +23,324 @@
  * PrestaShop is an internationally registered trademark of PrestaShop SA.
  */
 
-if (!defined('_TB_VERSION_'))
-	exit;
+if (!defined('_TB_VERSION_')) {
+    exit;
+}
 
 class BlockTags extends Module
 {
-	function __construct()
-	{
-		$this->name = 'blocktags';
-		$this->tab = 'front_office_features';
-		$this->version = '2.0.2';
-		$this->author = 'thirty bees';
-		$this->need_instance = 0;
+    /**
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     */
+    function __construct()
+    {
+        $this->name = 'blocktags';
+        $this->tab = 'front_office_features';
+        $this->version = '2.0.2';
+        $this->author = 'thirty bees';
+        $this->need_instance = 0;
 
-		$this->bootstrap = true;
-		parent::__construct();
+        $this->bootstrap = true;
+        parent::__construct();
 
-		$this->displayName = $this->l('Block Tags');
-		$this->description = $this->l('Adds a block containing your product tags.');
-		$this->tb_versions_compliancy = '> 1.0.0';
-		$this->tb_min_version = '1.0.0';
-		$this->ps_versions_compliancy = array('min' => '1.6', 'max' => '1.6.99.99');
-	}
+        $this->displayName = $this->l('Block Tags');
+        $this->description = $this->l('Adds a block containing your product tags.');
+        $this->tb_versions_compliancy = '> 1.0.0';
+        $this->tb_min_version = '1.0.0';
+        $this->ps_versions_compliancy = ['min' => '1.6', 'max' => '1.6.99.99'];
+    }
 
-	function install()
-	{
-		$success = (parent::install()
-			&& $this->registerHook('header')
-			&& $this->registerHook('leftColumn')
-			&& $this->registerHook('addproduct')
-			&& $this->registerHook('updateproduct')
-			&& $this->registerHook('deleteproduct')
-			&& Configuration::updateValue('BLOCKTAGS_NBR', 10)
-			&& Configuration::updateValue('BLOCKTAGS_MAX_LEVEL', 3)
-			&& Configuration::updateValue('BLOCKTAGS_RANDOMIZE', false)
-		);
+    /**
+     * @return bool
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     */
+    function install()
+    {
+        $success = (parent::install()
+            && $this->registerHook('header')
+            && $this->registerHook('leftColumn')
+            && $this->registerHook('addproduct')
+            && $this->registerHook('updateproduct')
+            && $this->registerHook('deleteproduct')
+            && Configuration::updateValue('BLOCKTAGS_NBR', 10)
+            && Configuration::updateValue('BLOCKTAGS_MAX_LEVEL', 3)
+            && Configuration::updateValue('BLOCKTAGS_RANDOMIZE', false)
+        );
 
-		$this->_clearCache('*');
+        $this->_clearCache('*');
 
-		return $success;
-	}
+        return $success;
+    }
 
-	public function uninstall()
-	{
-		$this->_clearCache('*');
+    /**
+     * @param string $template
+     * @param string|null $cache_id
+     * @param string|null $compile_id
+     *
+     * @return void
+     * @throws PrestaShopException
+     */
+    public function _clearCache($template, $cache_id = null, $compile_id = null)
+    {
+        parent::_clearCache('blocktags.tpl');
+    }
 
-		return parent::uninstall();
-	}
+    /**
+     * @return bool
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     */
+    public function uninstall()
+    {
+        $this->_clearCache('*');
 
-	public function hookAddProduct($params)
-	{
-		$this->_clearCache('*');
-	}
+        return parent::uninstall();
+    }
 
-	public function hookUpdateProduct($params)
-	{
-		$this->_clearCache('*');
-	}
+    /**
+     * @param array $params
+     *
+     * @return void
+     * @throws PrestaShopException
+     */
+    public function hookAddProduct($params)
+    {
+        $this->_clearCache('*');
+    }
 
-	public function hookDeleteProduct($params)
-	{
-		$this->_clearCache('*');
-	}
+    /**
+     * @param array $params
+     *
+     * @return void
+     * @throws PrestaShopException
+     */
+    public function hookUpdateProduct($params)
+    {
+        $this->_clearCache('*');
+    }
 
-	public function _clearCache($template, $cache_id = NULL, $compile_id = NULL)
-	{
-		parent::_clearCache('blocktags.tpl');
-	}
+    /**
+     * @param array $params
+     *
+     * @return void
+     * @throws PrestaShopException
+     */
+    public function hookDeleteProduct($params)
+    {
+        $this->_clearCache('*');
+    }
 
-	public function getContent()
-        {
-                $output = '';
-                $errors = array();
-                if (Tools::isSubmit('submitBlockTags'))
-                {
-                        $tagsNbr = Tools::getValue('BLOCKTAGS_NBR');
-                        if (!strlen($tagsNbr))
-                                $errors[] = $this->l('Please complete the "Displayed tags" field.');
-                        elseif (!Validate::isInt($tagsNbr) || (int)($tagsNbr) <= 0)
-                                $errors[] = $this->l('Invalid number.');
+    /**
+     * @return string
+     *
+     * @throws PrestaShopException
+     * @throws SmartyException
+     */
+    public function getContent()
+    {
+        $output = '';
+        $errors = [];
+        if (Tools::isSubmit('submitBlockTags')) {
+            $tagsNbr = Tools::getValue('BLOCKTAGS_NBR');
+            if (!strlen($tagsNbr)) {
+                $errors[] = $this->l('Please complete the "Displayed tags" field.');
+            }
+            elseif (!Validate::isInt($tagsNbr) || (int)($tagsNbr) <= 0) {
+                $errors[] = $this->l('Invalid number.');
+            }
 
-                        $tagsLevels = Tools::getValue('BLOCKTAGS_MAX_LEVEL');
-                        if (!strlen($tagsLevels))
-                                $errors[] = $this->l('Please complete the "Tag levels" field.');
-                        elseif (!Validate::isInt($tagsLevels) || (int)($tagsLevels) <= 0)
-                                $errors[] = $this->l('Invalid value for "Tag levels". Choose a positive integer number.');
+            $tagsLevels = Tools::getValue('BLOCKTAGS_MAX_LEVEL');
+            if (!strlen($tagsLevels)) {
+                $errors[] = $this->l('Please complete the "Tag levels" field.');
+            }
+            elseif (!Validate::isInt($tagsLevels) || (int)($tagsLevels) <= 0) {
+                $errors[] = $this->l('Invalid value for "Tag levels". Choose a positive integer number.');
+            }
 
-                        $randomize = Tools::getValue('BLOCKTAGS_RANDOMIZE');
-                        if (!strlen($randomize))
-                        	$errors[] = $this->l('Please complete the "Randomize" field.');
-                        elseif (!Validate::isBool($randomize))
-                        	$errors[] = $this->l('Invalid value for "Randomize". It has to be a boolean.');
+            $randomize = Tools::getValue('BLOCKTAGS_RANDOMIZE');
+            if (!strlen($randomize)) {
+                $errors[] = $this->l('Please complete the "Randomize" field.');
+            }
+            elseif (!Validate::isBool($randomize)) {
+                $errors[] = $this->l('Invalid value for "Randomize". It has to be a boolean.');
+            }
 
-                        if (count($errors))
-                                $output = $this->displayError(implode('<br />', $errors));
-                        else
-                        {
-                                Configuration::updateValue('BLOCKTAGS_NBR', (int)$tagsNbr);
-                                Configuration::updateValue('BLOCKTAGS_MAX_LEVEL', (int)$tagsLevels);
-                                Configuration::updateValue('BLOCKTAGS_RANDOMIZE', (bool)$randomize);
+            if (count($errors)) {
+                $output = $this->displayError(implode('<br />', $errors));
+            }
+            else {
+                Configuration::updateValue('BLOCKTAGS_NBR', (int)$tagsNbr);
+                Configuration::updateValue('BLOCKTAGS_MAX_LEVEL', (int)$tagsLevels);
+                Configuration::updateValue('BLOCKTAGS_RANDOMIZE', (bool)$randomize);
 
-                                $output = $this->displayConfirmation($this->l('Settings updated'));
-                        }
-                }
-                return $output.$this->renderForm();
+                $output = $this->displayConfirmation($this->l('Settings updated'));
+            }
         }
+        return $output . $this->renderForm();
+    }
 
-	/**
-	* Returns module content for left column
-	*
-	* @param array $params Parameters
-	* @return string Content
-	*
-	*/
-	function hookLeftColumn($params)
-	{
-		if (!$this->isCached('blocktags.tpl', $this->getCacheId('blocktags')))
-		{
-			$tags = Tag::getMainTags((int)($params['cookie']->id_lang), (int)(Configuration::get('BLOCKTAGS_NBR')));
+    /**
+     * @return string
+     *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     * @throws SmartyException
+     */
+    public function renderForm()
+    {
+        $fields_form = [
+            'form' => [
+                'legend' => [
+                    'title' => $this->l('Settings'),
+                    'icon' => 'icon-cogs'
+                ],
+                'input' => [
+                    [
+                        'type' => 'text',
+                        'label' => $this->l('Displayed tags'),
+                        'name' => 'BLOCKTAGS_NBR',
+                        'class' => 'fixed-width-xs',
+                        'desc' => $this->l('Set the number of tags you would like to see displayed in this block. (default: 10)')
+                    ],
+                    [
+                        'type' => 'text',
+                        'label' => $this->l('Tag levels'),
+                        'name' => 'BLOCKTAGS_MAX_LEVEL',
+                        'class' => 'fixed-width-xs',
+                        'desc' => $this->l('Set the number of different tag levels you would like to use. (default: 3)')
+                    ],
+                    [
+                        'type' => 'switch',
+                        'label' => $this->l('Random display'),
+                        'name' => 'BLOCKTAGS_RANDOMIZE',
+                        'class' => 'fixed-width-xs',
+                        'desc' => $this->l('If enabled, displays tags randomly. By default, random display is disabled and the most used tags are displayed first.'),
+                        'values' => [
+                            [
+                                'id' => 'active_on',
+                                'value' => 1,
+                                'label' => $this->l('Enabled')
+                            ],
+                            [
+                                'id' => 'active_off',
+                                'value' => 0,
+                                'label' => $this->l('Disabled')
+                            ]
+                        ]
+                    ]
+                ],
+                'submit' => [
+                    'title' => $this->l('Save'),
+                ]
+            ],
+        ];
 
-			$max = -1;
-			$min = -1;
-			foreach ($tags as $tag)
-			{
-				if ($tag['times'] > $max)
-					$max = $tag['times'];
-				if ($tag['times'] < $min || $min == -1)
-					$min = $tag['times'];
-			}
+        /** @var AdminController $controller */
+        $controller = $this->context->controller;
+        $helper = new HelperForm();
+        $helper->show_toolbar = false;
+        $helper->table = $this->table;
+        $lang = new Language((int)Configuration::get('PS_LANG_DEFAULT'));
+        $helper->default_form_language = $lang->id;
+        $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') ? Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') : 0;
+        $helper->identifier = $this->identifier;
+        $helper->submit_action = 'submitBlockTags';
+        $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false) . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name;
+        $helper->token = Tools::getAdminTokenLite('AdminModules');
+        $helper->tpl_vars = [
+            'fields_value' => $this->getConfigFieldsValues(),
+            'languages' => $controller->getLanguages(),
+            'id_language' => $this->context->language->id
+        ];
 
-			if ($min == $max)
-				$coef = $max;
-			else
-				$coef = (Configuration::get('BLOCKTAGS_MAX_LEVEL') - 1) / ($max - $min);
+        return $helper->generateForm([$fields_form]);
+    }
 
-			if (!count($tags))
-				return false;
-			if (Configuration::get('BLOCKTAGS_RANDOMIZE'))
-				shuffle($tags);
-			foreach ($tags as &$tag)
-				$tag['class'] = 'tag_level'.(int)(($tag['times'] - $min) * $coef + 1);
-			$this->smarty->assign('tags', $tags);
-		}
-		return $this->display(__FILE__, 'blocktags.tpl', $this->getCacheId('blocktags'));
-	}
+    /**
+     * @return array
+     *
+     * @throws PrestaShopException
+     */
+    public function getConfigFieldsValues()
+    {
+        return [
+            'BLOCKTAGS_NBR' => Tools::getValue('BLOCKTAGS_NBR', (int)Configuration::get('BLOCKTAGS_NBR')),
+            'BLOCKTAGS_MAX_LEVEL' => Tools::getValue('BLOCKTAGS_MAX_LEVEL', (int)Configuration::get('BLOCKTAGS_MAX_LEVEL')),
+            'BLOCKTAGS_RANDOMIZE' => Tools::getValue('BLOCKTAGS_RANDOMIZE', (bool)Configuration::get('BLOCKTAGS_RANDOMIZE')),
+        ];
+    }
 
-	function hookRightColumn($params)
-	{
-		return $this->hookLeftColumn($params);
-	}
+    /**
+     * @param array $params
+     *
+     * @return string
+     *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     * @throws SmartyException
+     */
+    function hookRightColumn($params)
+    {
+        return $this->hookLeftColumn($params);
+    }
 
-	function hookHeader($params)
-	{
-		$this->context->controller->addCSS(($this->_path).'blocktags.css', 'all');
-	}
+    /**
+     * Returns module content for left column
+     *
+     * @param array $params Parameters
+     *
+     * @return string Content
+     *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     * @throws SmartyException
+     */
+    function hookLeftColumn($params)
+    {
+        if (!$this->isCached('blocktags.tpl', $this->getCacheId('blocktags'))) {
+            $tags = Tag::getMainTags((int)($params['cookie']->id_lang), (int)(Configuration::get('BLOCKTAGS_NBR')));
 
-	public function renderForm()
-	{
-		$fields_form = array(
-			'form' => array(
-				'legend' => array(
-					'title' => $this->l('Settings'),
-					'icon' => 'icon-cogs'
-				),
-				'input' => array(
-					array(
-						'type' => 'text',
-						'label' => $this->l('Displayed tags'),
-						'name' => 'BLOCKTAGS_NBR',
-						'class' => 'fixed-width-xs',
-						'desc' => $this->l('Set the number of tags you would like to see displayed in this block. (default: 10)')
-                                        ),
-                                        array(
-                                                'type' => 'text',
-                                                'label' => $this->l('Tag levels'),
-                                                'name' => 'BLOCKTAGS_MAX_LEVEL',
-                                                'class' => 'fixed-width-xs',
-                                                'desc' => $this->l('Set the number of different tag levels you would like to use. (default: 3)')
-                                        ),
-                                        array(
-                                        	'type' => 'switch',
-                                        	'label' => $this->l('Random display'),
-                                        	'name' => 'BLOCKTAGS_RANDOMIZE',
-                                        	'class' => 'fixed-width-xs',
-                                        	'desc' => $this->l('If enabled, displays tags randomly. By default, random display is disabled and the most used tags are displayed first.'),
-                                        	'values' => array(
-                                        		array(
-                                        			'id' => 'active_on',
-                                        			'value' => 1,
-                                        			'label' => $this->l('Enabled')
-                                        			),
-                                        		array(
-                                        			'id' => 'active_off',
-                                        			'value' => 0,
-                                        			'label' => $this->l('Disabled')
-                                        		)
-                                        	)
-                                        )
-				),
-				'submit' => array(
-					'title' => $this->l('Save'),
-				)
-			),
-		);
+            $max = -1;
+            $min = -1;
+            foreach ($tags as $tag) {
+                if ($tag['times'] > $max) {
+                    $max = $tag['times'];
+                }
+                if ($tag['times'] < $min || $min == -1) {
+                    $min = $tag['times'];
+                }
+            }
 
-		$helper = new HelperForm();
-		$helper->show_toolbar = false;
-		$helper->table = $this->table;
-		$lang = new Language((int)Configuration::get('PS_LANG_DEFAULT'));
-		$helper->default_form_language = $lang->id;
-		$helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') ? Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') : 0;
-		$helper->identifier = $this->identifier;
-		$helper->submit_action = 'submitBlockTags';
-		$helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false).'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name;
-		$helper->token = Tools::getAdminTokenLite('AdminModules');
-		$helper->tpl_vars = array(
-			'fields_value' => $this->getConfigFieldsValues(),
-			'languages' => $this->context->controller->getLanguages(),
-			'id_language' => $this->context->language->id
-		);
+            if ($min == $max) {
+                $coef = $max;
+            } else {
+                $coef = (Configuration::get('BLOCKTAGS_MAX_LEVEL') - 1) / ($max - $min);
+            }
 
-		return $helper->generateForm(array($fields_form));
-	}
+            if (!count($tags)) {
+                return false;
+            }
+            if (Configuration::get('BLOCKTAGS_RANDOMIZE')) {
+                shuffle($tags);
+            }
+            foreach ($tags as &$tag) {
+                $tag['class'] = 'tag_level' . (int)(($tag['times'] - $min) * $coef + 1);
+            }
+            $this->smarty->assign('tags', $tags);
+        }
+        return $this->display(__FILE__, 'blocktags.tpl', $this->getCacheId('blocktags'));
+    }
 
-	public function getConfigFieldsValues()
-	{
-		return array(
-			'BLOCKTAGS_NBR' => Tools::getValue('BLOCKTAGS_NBR', (int)Configuration::get('BLOCKTAGS_NBR')),
-			'BLOCKTAGS_MAX_LEVEL' => Tools::getValue('BLOCKTAGS_MAX_LEVEL', (int)Configuration::get('BLOCKTAGS_MAX_LEVEL')),
-			'BLOCKTAGS_RANDOMIZE' => Tools::getValue('BLOCKTAGS_RANDOMIZE', (bool)Configuration::get('BLOCKTAGS_RANDOMIZE')),
-		);
-	}
+    /**
+     * @param array $params
+     *
+     * @return void
+     */
+    function hookHeader($params)
+    {
+        $this->context->controller->addCSS(($this->_path) . 'blocktags.css', 'all');
+    }
 
 }
